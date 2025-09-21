@@ -117,6 +117,7 @@ int main()
 #define RSECS_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 /// --------------------------------
 /// INFO : RSECS Contract
@@ -315,6 +316,7 @@ struct secs_world {
     } while (0)
 #define SECS_CREATE_QUERY(BITMASK) (secs_query) { .mask = (BITMASK) }
 #define secs_query_iter_current(IT) (IT)->position
+#define secs_query_iter_reset(IT) (IT)->position = -1
 
 secs_entity_id secs_spawn(secs_world* world)
 {
@@ -338,15 +340,17 @@ void secs_insert_comp(secs_world* world, secs_entity_id entity_id, secs_componen
         memcpy(comp->dense.items + (comp->sparse.count - 1) * comp->size_of_component, component,  comp->size_of_component);
         return;
     }
-    rstb_da_append(&(comp->sparse), entity_id);
-    rstb_da_reserve(&(comp->dense), comp->sparse.count * comp->size_of_component);
-    memcpy(comp->dense.items + (comp->sparse.count - 1) * comp->size_of_component, component,  comp->size_of_component);
+    rstb_da_reserve(&(comp->sparse), entity_id + 1);
+    comp->sparse.items[entity_id] = comp->dense.count;
+    comp->dense.count += 1;
+    rstb_da_reserve(&(comp->dense), (comp->dense.count + 1) * comp->size_of_component);
+    memcpy(comp->dense.items + ((comp->sparse.items[entity_id]) * comp->size_of_component), component,  comp->size_of_component);
     world->mask.items[entity_id] |= component_id;
 }
 
 bool secs_has_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
-    RSECS_ASSERT(component_id < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
+    RSECS_ASSERT(component_id < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     RSECS_ASSERT(world->mask.count > entity_id && "Entity is not found");
     if ((world->mask.items[entity_id] & component_id) == component_id) return true;
     return false;
@@ -365,7 +369,7 @@ void* secs_get_comp(secs_world* world, secs_entity_id entity_id, secs_component_
     if (!secs_has_comp(world, entity_id, component_id)) return NULL;
 
     secs_comp_list* comp = &world->lists.items[component_id];
-    if (comp->sparse.count > entity_id) {
+    if (comp->sparse.capacity > entity_id) {
         size_t index = comp->sparse.items[entity_id];
         return (void*) (comp->dense.items + index * comp->size_of_component);
     }
@@ -412,6 +416,7 @@ void* secs_field(secs_query_iterator* it, secs_component_mask mask)
 
     #define query_iter(WORLD, QUERY) secs_query_iter((WORLD), (QUERY))
     #define query_iter_next(IT) secs_query_iter_next((IT))
+    #define query_iter_reset(IT) secs_query_iter_reset((IT))
     #define query_iter_current(IT) secs_query_iter_current(IT)
     #define field(IT, MASK) secs_field((IT), (MASK))
 #endif // RSECS_STRIP_PREFIX
