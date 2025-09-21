@@ -77,6 +77,7 @@ int main()
  - secs_component_mask      - Lifeblood of the mask system, it just mapped to size_t
  - secs_query               - Query parameter for fetching entity with certain component combination
  - secs_query_iterator      - Ready to use iterator
+
 ### Function
  - secs_entity_id secs_spawn(secs_world*); - Creating new entity
  - void secs_despawn(secs_world*, secs_entity_id); - Despawning entity
@@ -397,6 +398,8 @@ void* secs_field(secs_query_iterator* it, secs_component_mask mask)
 }
 
 
+#endif //RSECS_IMPLEMENTATION
+
 #ifdef RSECS_STRIP_PREFIX
     #define INIT_WORLD(WORLD) SECS_INIT_WORLD(WORLD)
     #define REGISTER_COMPONENT(WORLD, TYPE) SECS_REGISTER_COMPONENT(WORLD, TYPE)
@@ -412,7 +415,5 @@ void* secs_field(secs_query_iterator* it, secs_component_mask mask)
     #define query_iter_current(IT) secs_query_iter_current(IT)
     #define field(IT, MASK) secs_field((IT), (MASK))
 #endif // RSECS_STRIP_PREFIX
-
-#endif //RSECS_IMPLEMENTATION
 
 #endif // RSECS_H
