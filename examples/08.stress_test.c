@@ -1,4 +1,8 @@
-#include <raylib.h>
+/// This example require Raylib <https://www.raylib.com/>
+/// Example gcc command (make sure to have raylib folder in this project)
+/// windows : gcc examples/08.stress_test.c -o main -L./raylib -I./raylib -lopengl32 -lraylib -lgdi32 -lwinmm
+/// linux : gcc examples/08.stress_test.c -o main -L./raylib -I./raylib -lraylib  -lm
+
 #include <raymath.h>
 #define RSECS_STRIP_PREFIX
 #define RSECS_IMPLEMENTATION
@@ -10,7 +14,7 @@
 
 #define STARTING_ENTITY 50
 #define TOTAL_ENTITY    2000
-#define DELAY_SPAWN     0.05
+#define DELAY_SPAWN     0.01
 
 #define CIRCLE_MAX_SIZE 50
 #define MAX_VELOCITY    200
@@ -34,6 +38,7 @@ void SpawnCircle(secs_world*);
 int main(void)
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Breakout");
+    ToggleFullscreen();
     SetTargetFPS(MAX_FPS);
 
     secs_world sekai = {0};

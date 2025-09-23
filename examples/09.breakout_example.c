@@ -1,7 +1,7 @@
 /// This example require Raylib <https://www.raylib.com/>
 /// Example gcc command (make sure to have raylib folder in this project)
-/// windows : gcc examples/08.breakout_example.c -o main -L./raylib -I./raylib -lopengl32 -lraylib -lgdi32 -lwinmm
-/// linux : gcc examples/08.breakout_example.c -o main -L./raylib -I./raylib -lraylib 
+/// windows : gcc examples/09.breakout_example.c -o main -L./raylib -I./raylib -lopengl32 -lraylib -lgdi32 -lwinmm
+/// linux : gcc examples/09.breakout_example.c -o main -L./raylib -I./raylib -lraylib  -lm
 
 #include <raylib.h>
 #define RSECS_STRIP_PREFIX

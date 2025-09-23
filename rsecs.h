@@ -176,7 +176,6 @@ void* secs_field(secs_query_iterator* it, secs_component_mask mask);
     #define RSECS_ASSERT assert
 #endif
 
-
 #ifdef RSECS_IMPLEMENTATION
 /// --------------------------------
 /// INFO : I'm lazy okay for creating dynamic array
@@ -305,6 +304,7 @@ struct secs_world {
 
     secs_comp_list_chunk lists;
     secs_comp_mask_chunk mask;
+    secs_entity_chunk    dead;
 };
 
 #define SECS_INIT_WORLD(WORLD) (WORLD)->component_mask = 1; 
@@ -320,6 +320,12 @@ struct secs_world {
 
 secs_entity_id secs_spawn(secs_world* world)
 {
+    if (world->dead.count > 0) {
+        secs_entity_id id = world->dead.items[0];
+        rstb_da_remove_unordered(&world->dead, 0);
+        world->mask.items[id] = 0;
+        return id;
+    }
     secs_entity_id id = world->next_entity_id++;
     rstb_da_reserve(&world->mask, id + 1);
     world->mask.count += 1;
@@ -330,6 +336,7 @@ void secs_despawn(secs_world* world, secs_entity_id id)
 {
     RSECS_ASSERT(world->mask.count > id && "Entity is not found");
     world->mask.items[id] = 0;
+    rstb_da_append(&world->dead, id);
 }
 
 void secs_insert_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id, void* component)
