@@ -180,7 +180,6 @@ void* secs_field(secs_query_iterator* it, secs_component_mask mask);
     #define RSECS_ASSERT assert
 #endif
 
-#define RSECS_IMPLEMENTATION
 #ifdef RSECS_IMPLEMENTATION
 /// --------------------------------
 /// INFO : I'm lazy okay for creating dynamic array
@@ -290,6 +289,74 @@ rstb_da_decl(char, secs_comp_chunk);
 rstb_da_decl(secs_entity_id, secs_entity_chunk);
 rstb_da_decl(secs_component_mask, secs_comp_mask_chunk);
 
+// Pre-compute index array based on the component mask
+static secs_component_mask _secs_comp_map[64] = {
+    (secs_component_mask)0x0,
+    (secs_component_mask)0x1,
+    (secs_component_mask)0x1 << 1,
+    (secs_component_mask)0x1 << 2,
+    (secs_component_mask)0x1 << 3,
+    (secs_component_mask)0x1 << 4,
+    (secs_component_mask)0x1 << 5,
+    (secs_component_mask)0x1 << 6,
+    (secs_component_mask)0x1 << 7,
+    (secs_component_mask)0x1 << 8,
+    (secs_component_mask)0x1 << 9,
+    (secs_component_mask)0x1 << 10,
+    (secs_component_mask)0x1 << 11,
+    (secs_component_mask)0x1 << 12,
+    (secs_component_mask)0x1 << 13,
+    (secs_component_mask)0x1 << 14,
+    (secs_component_mask)0x1 << 15,
+    (secs_component_mask)0x1 << 16,
+    (secs_component_mask)0x1 << 17,
+    (secs_component_mask)0x1 << 18,
+    (secs_component_mask)0x1 << 19,
+    (secs_component_mask)0x1 << 20,
+    (secs_component_mask)0x1 << 21,
+    (secs_component_mask)0x1 << 22,
+    (secs_component_mask)0x1 << 23,
+    (secs_component_mask)0x1 << 24,
+    (secs_component_mask)0x1 << 25,
+    (secs_component_mask)0x1 << 26,
+    (secs_component_mask)0x1 << 27,
+    (secs_component_mask)0x1 << 28,
+    (secs_component_mask)0x1 << 29,
+    (secs_component_mask)0x1 << 30,
+    (secs_component_mask)0x1 << 31,
+    (secs_component_mask)0x1 << 32,
+    (secs_component_mask)0x1 << 33,
+    (secs_component_mask)0x1 << 34,
+    (secs_component_mask)0x1 << 35,
+    (secs_component_mask)0x1 << 36,
+    (secs_component_mask)0x1 << 37,
+    (secs_component_mask)0x1 << 38,
+    (secs_component_mask)0x1 << 39,
+    (secs_component_mask)0x1 << 40,
+    (secs_component_mask)0x1 << 41,
+    (secs_component_mask)0x1 << 42,
+    (secs_component_mask)0x1 << 43,
+    (secs_component_mask)0x1 << 44,
+    (secs_component_mask)0x1 << 45,
+    (secs_component_mask)0x1 << 46,
+    (secs_component_mask)0x1 << 47,
+    (secs_component_mask)0x1 << 48,
+    (secs_component_mask)0x1 << 49,
+    (secs_component_mask)0x1 << 50,
+    (secs_component_mask)0x1 << 51,
+    (secs_component_mask)0x1 << 52,
+    (secs_component_mask)0x1 << 53,
+    (secs_component_mask)0x1 << 54,
+    (secs_component_mask)0x1 << 55,
+    (secs_component_mask)0x1 << 56,
+    (secs_component_mask)0x1 << 57,
+    (secs_component_mask)0x1 << 58,
+    (secs_component_mask)0x1 << 59,
+    (secs_component_mask)0x1 << 60,
+    (secs_component_mask)0x1 << 61,
+    (secs_component_mask)0x1 << 62,
+};
+
 typedef struct secs_comp_list {
     // The size of the component inside the dense array
     size_t size_of_component;
@@ -315,11 +382,28 @@ struct secs_world {
 #define SECS_INIT_WORLD(WORLD) (WORLD)->component_mask = 1; 
 #define SECS_REGISTER_COMPONENT(WORLD, TYPE) (WORLD)->component_mask; \
     do { \
-        rstb_da_reserve(&(WORLD)->lists, (WORLD)->component_mask + 1); \
-        (WORLD)->lists.items[(WORLD)->component_mask].size_of_component = sizeof(TYPE); \
+        size_t index = __secs_get_comp_from_bitmask((WORLD)->component_mask); \
+        rstb_da_reserve(&(WORLD)->lists, index + 1); \
+        (WORLD)->lists.items[index].size_of_component = sizeof(TYPE); \
         (WORLD)->component_mask = (WORLD)->component_mask << 1; \
     } while (0)
 #define secs_query_iter_reset(IT) (IT)->position = -1
+
+size_t __secs_get_comp_from_bitmask(secs_component_mask mask)
+{
+    int low = 0;
+    int high = (sizeof(_secs_comp_map)/sizeof(_secs_comp_map[0])) - 1;
+    while (low <= high) {
+        int mid = low + (high - low) / 2;
+        if (_secs_comp_map[mid] == mask) {
+            return mid;
+        } else if (_secs_comp_map[mid] < mask) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+}
 
 secs_entity_id secs_spawn(secs_world* world)
 {
@@ -344,8 +428,9 @@ void secs_despawn(secs_world* world, secs_entity_id id)
 
 void secs_insert_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id, void* component)
 {
-    RSECS_ASSERT(component_id < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
-    secs_comp_list* comp = &world->lists.items[component_id];
+    size_t index = __secs_get_comp_from_bitmask(component_id);
+    RSECS_ASSERT(index < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
+    secs_comp_list* comp = &world->lists.items[index];
     if (comp->sparse.count > entity_id) {
         memcpy(comp->dense.items + (comp->sparse.count - 1) * comp->size_of_component, component,  comp->size_of_component);
         return;
@@ -360,31 +445,35 @@ void secs_insert_comp(secs_world* world, secs_entity_id entity_id, secs_componen
 
 bool secs_has_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
-    RSECS_ASSERT(component_id < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
+    size_t index = __secs_get_comp_from_bitmask(component_id);
+    RSECS_ASSERT(index < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     RSECS_ASSERT(world->mask.count > entity_id && "Entity is not found");
     return (world->mask.items[entity_id] & component_id) == component_id;
 }
 
 bool secs_has_not_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
-    RSECS_ASSERT(component_id < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
+    size_t index = __secs_get_comp_from_bitmask(component_id);
+    RSECS_ASSERT(index < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     RSECS_ASSERT(world->mask.count > entity_id && "Entity is not found");
     return (world->mask.items[entity_id] & component_id) == 0;
 }
 
 void secs_remove_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
-    RSECS_ASSERT(component_id < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
+    size_t index = __secs_get_comp_from_bitmask(component_id);
+    RSECS_ASSERT(index < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     if (!secs_has_comp(world, entity_id, component_id)) return;
     world->mask.items[entity_id] &= ~component_id;
 }
 
 void* secs_get_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
-    RSECS_ASSERT(component_id < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
+    size_t index = __secs_get_comp_from_bitmask(component_id);
+    RSECS_ASSERT(index < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     if (!secs_has_comp(world, entity_id, component_id)) return NULL;
 
-    secs_comp_list* comp = &world->lists.items[component_id];
+    secs_comp_list* comp = &world->lists.items[index];
     if (comp->sparse.capacity > entity_id) {
         size_t index = comp->sparse.items[entity_id];
         return (void*) (comp->dense.items + index * comp->size_of_component);
