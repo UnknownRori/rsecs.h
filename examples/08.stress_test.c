@@ -50,8 +50,8 @@ int main(void)
     CIRCLE_ID       = REGISTER_COMPONENT(&sekai, Circle);
     COLLIDEABLE_ID  = REGISTER_COMPONENT(&sekai, Collideable);
 
-    int entity = 50;
-    for (size_t i = 0; i < 50; i++) {
+    int entity = STARTING_ENTITY;
+    for (size_t i = 0; i < STARTING_ENTITY; i++) {
         SpawnCircle(&sekai);
     }
 
