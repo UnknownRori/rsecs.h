@@ -163,8 +163,15 @@ typedef struct secs_query_iterator {
     secs_entity_id  position;
 } secs_query_iterator;
 
+#define SECS_INIT_WORLD(WORLD) secs_init_world(WORLD) 
+#define SECS_REGISTER_COMPONENT(WORLD, TYPE) secs_register_component((WORLD), sizeof(TYPE))
+/// Generate a query by using format 
+/// `SECS_CREATE_QUERY(.has = POSITION_ID, .exclude = OUT_OF_BOUND_ID)`;``
 #define SECS_CREATE_QUERY(...) (secs_query) {__VA_ARGS__}
+
 #define secs_query_iter_current(IT) (IT)->position
+#define secs_query_iter_reset(IT) (IT)->position = -1
+
 
 /// Initialize the [`secs_world`] by allocating necessarily memory to it
 RSECS_DEF void secs_init_world(secs_world* world);
@@ -400,10 +407,6 @@ struct secs_world {
     secs_comp_mask_chunk mask;
     secs_entity_chunk    dead;
 };
-
-#define SECS_INIT_WORLD(WORLD) secs_init_world(WORLD) 
-#define SECS_REGISTER_COMPONENT(WORLD, TYPE) secs_register_component((WORLD), sizeof(TYPE))
-#define secs_query_iter_reset(IT) (IT)->position = -1
 
 static size_t __secs_get_comp_from_bitmask(secs_component_mask mask)
 {
