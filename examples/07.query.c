@@ -31,7 +31,7 @@ int main()
     insert_comp(&world, enemy_entity, POSITION_ID, &(Position) {.x = 200.f, .y = 100.f });
     insert_comp(&world, enemy_entity, HITPOINT_ID, &(Hitpoint) { .value = 20.f });
 
-    secs_query query = CREATE_QUERY(POSITION_ID | HITPOINT_ID);
+    secs_query query = CREATE_QUERY(.has = POSITION_ID | HITPOINT_ID);
     secs_query_iterator it = query_iter(&world, query);
 
     printf("---------------------\n");

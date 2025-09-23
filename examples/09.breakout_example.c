@@ -121,7 +121,7 @@ int main(void)
 
 void UpdatePosition(secs_world* world) {
     float delta = GetFrameTime();
-    secs_query query = CREATE_QUERY(VELOCITY_ID | POSITION_ID);
+    secs_query query = CREATE_QUERY(.has = VELOCITY_ID | POSITION_ID);
     secs_query_iterator it = secs_query_iter(world, query);
 
     while (secs_query_iter_next(&it)) {
@@ -133,10 +133,10 @@ void UpdatePosition(secs_world* world) {
     }
 }
 void UpdateCollision(secs_world* world) {
-    secs_query b_query = CREATE_QUERY(BALL_ID | POSITION_ID | VELOCITY_ID | COLLIDEABLE_ID);
+    secs_query b_query = CREATE_QUERY(.has = BALL_ID | POSITION_ID | VELOCITY_ID | COLLIDEABLE_ID);
     secs_query_iterator b_it = secs_query_iter(world, b_query);
 
-    secs_query block_query = CREATE_QUERY(BLOCK_ID | POSITION_ID | COLLIDEABLE_ID);
+    secs_query block_query = CREATE_QUERY(.has = BLOCK_ID | POSITION_ID | COLLIDEABLE_ID);
     secs_query_iterator block_iterator = secs_query_iter(world, block_query);
 
     // Resolve block collision with wall
@@ -199,7 +199,7 @@ void UpdateCollision(secs_world* world) {
     }
 }
 void UpdatePlayer(secs_world* world) {
-    secs_query query = CREATE_QUERY(PLAYER_ID | VELOCITY_ID);
+    secs_query query = CREATE_QUERY(.has = PLAYER_ID | VELOCITY_ID);
     secs_query_iterator it = secs_query_iter(world, query);
 
     while (secs_query_iter_next(&it)) {
@@ -217,7 +217,7 @@ void UpdatePlayer(secs_world* world) {
     }
 }
 void DrawBall(secs_world* world) {
-    secs_query query = CREATE_QUERY(BALL_ID | POSITION_ID);
+    secs_query query = CREATE_QUERY(.has = BALL_ID | POSITION_ID);
     secs_query_iterator it = secs_query_iter(world, query);
 
     while (secs_query_iter_next(&it)) {
@@ -227,7 +227,7 @@ void DrawBall(secs_world* world) {
     }
 }
 void DrawBlock(secs_world* world) {
-    secs_query query = CREATE_QUERY(BLOCK_ID | POSITION_ID);
+    secs_query query = CREATE_QUERY(.has = BLOCK_ID | POSITION_ID);
     secs_query_iterator it = secs_query_iter(world, query);
 
     while (secs_query_iter_next(&it)) {

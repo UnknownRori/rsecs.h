@@ -3,6 +3,7 @@
 /// windows : gcc examples/08.stress_test.c -o main -L./raylib -I./raylib -lopengl32 -lraylib -lgdi32 -lwinmm
 /// linux : gcc examples/08.stress_test.c -o main -L./raylib -I./raylib -lraylib  -lm
 
+#include <raylib.h>
 #include <raymath.h>
 #define RSECS_STRIP_PREFIX
 #define RSECS_IMPLEMENTATION
@@ -38,7 +39,6 @@ void SpawnCircle(secs_world*);
 int main(void)
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Breakout");
-    ToggleFullscreen();
     SetTargetFPS(MAX_FPS);
 
     secs_world sekai = {0};
@@ -105,7 +105,7 @@ void SpawnCircle(secs_world* sekai)
 void UpdatePosition(secs_world* world)
 {
     float delta = GetFrameTime();
-    secs_query query = CREATE_QUERY(POSITION_ID | VELOCITY_ID);
+    secs_query query = CREATE_QUERY(.has = POSITION_ID | VELOCITY_ID);
     secs_query_iterator it = query_iter(world, query);
 
     while (query_iter_next(&it)) {
@@ -127,7 +127,7 @@ void UpdatePosition(secs_world* world)
 void UpdateCollision(secs_world* world)
 {
     float delta = GetFrameTime();
-    secs_query query = CREATE_QUERY(CIRCLE_ID | POSITION_ID | VELOCITY_ID | COLLIDEABLE_ID);
+    secs_query query = CREATE_QUERY(.has = CIRCLE_ID | POSITION_ID | VELOCITY_ID | COLLIDEABLE_ID);
     secs_query_iterator it = query_iter(world, query);
 
     while (query_iter_next(&it)) {
@@ -180,7 +180,7 @@ void UpdateCollision(secs_world* world)
 }
 void DrawEntityCircle(secs_world* world)
 {
-    secs_query query = CREATE_QUERY(POSITION_ID | CIRCLE_ID);
+    secs_query query = CREATE_QUERY(.has = POSITION_ID | CIRCLE_ID);
     secs_query_iterator it = query_iter(world, query);
 
     while (query_iter_next(&it)) {

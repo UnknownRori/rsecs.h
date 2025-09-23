@@ -131,14 +131,18 @@ typedef size_t secs_component_mask;
 typedef struct secs_world secs_world;
 
 typedef struct secs_query {
-    secs_component_mask mask;
+    secs_component_mask has;
+    secs_component_mask exclude;
 } secs_query;
 
 typedef struct secs_query_iterator {
+    secs_query              query;
     secs_world*             world;
-    secs_component_mask     mask;
     size_t                  position;
 } secs_query_iterator;
+
+#define SECS_CREATE_QUERY(...) (secs_query) {__VA_ARGS__}
+#define secs_query_iter_current(IT) (IT)->position
 
 /// Spawning an entity and doing some chore to setup the world to accomodate new entity
 /// It might be use old entity id
@@ -176,6 +180,7 @@ void* secs_field(secs_query_iterator* it, secs_component_mask mask);
     #define RSECS_ASSERT assert
 #endif
 
+#define RSECS_IMPLEMENTATION
 #ifdef RSECS_IMPLEMENTATION
 /// --------------------------------
 /// INFO : I'm lazy okay for creating dynamic array
@@ -314,8 +319,6 @@ struct secs_world {
         (WORLD)->lists.items[(WORLD)->component_mask].size_of_component = sizeof(TYPE); \
         (WORLD)->component_mask = (WORLD)->component_mask << 1; \
     } while (0)
-#define SECS_CREATE_QUERY(BITMASK) (secs_query) { .mask = (BITMASK) }
-#define secs_query_iter_current(IT) (IT)->position
 #define secs_query_iter_reset(IT) (IT)->position = -1
 
 secs_entity_id secs_spawn(secs_world* world)
@@ -359,8 +362,14 @@ bool secs_has_comp(secs_world* world, secs_entity_id entity_id, secs_component_m
 {
     RSECS_ASSERT(component_id < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     RSECS_ASSERT(world->mask.count > entity_id && "Entity is not found");
-    if ((world->mask.items[entity_id] & component_id) == component_id) return true;
-    return false;
+    return (world->mask.items[entity_id] & component_id) == component_id;
+}
+
+bool secs_has_not_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
+{
+    RSECS_ASSERT(component_id < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
+    RSECS_ASSERT(world->mask.count > entity_id && "Entity is not found");
+    return (world->mask.items[entity_id] & component_id) == 0;
 }
 
 void secs_remove_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
@@ -387,8 +396,8 @@ void* secs_get_comp(secs_world* world, secs_entity_id entity_id, secs_component_
 secs_query_iterator secs_query_iter(secs_world* world, secs_query query)
 {
      return (secs_query_iterator) {
+        .query = query,
         .world = world,
-        .mask = query.mask,
         .position = (size_t)-1,
     };
 }
@@ -397,7 +406,7 @@ bool secs_query_iter_next(secs_query_iterator* it)
 {
     while (it->world->mask.count > it->position + 1) {
         it->position++;
-        if (secs_has_comp(it->world, it->position, it->mask)) {
+        if (secs_has_comp(it->world, it->position, it->query.has) && secs_has_not_comp(it->world, it->position, it->query.exclude)) {
             return true;
         }
     }
@@ -414,7 +423,7 @@ void* secs_field(secs_query_iterator* it, secs_component_mask mask)
 #ifdef RSECS_STRIP_PREFIX
     #define INIT_WORLD(WORLD) SECS_INIT_WORLD(WORLD)
     #define REGISTER_COMPONENT(WORLD, TYPE) SECS_REGISTER_COMPONENT(WORLD, TYPE)
-    #define CREATE_QUERY(QUERY) SECS_CREATE_QUERY(QUERY)
+    #define CREATE_QUERY(...) SECS_CREATE_QUERY(__VA_ARGS__)
 
     #define insert_comp(WORLD, ID, MASK, ...) secs_insert_comp((WORLD), (ID), (MASK), (__VA_ARGS__))
     #define remove_comp(WORLD, ID, MASK) secs_remove_comp((WORLD), (ID), (MASK))
