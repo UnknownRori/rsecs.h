@@ -117,6 +117,10 @@ int main(void)
             DrawText(str_life, SCREEN_WIDTH / 2.f, 12, 24, WHITE);
         EndDrawing();
     }
+
+    secs_free_world(&sekai);
+
+    return 0;
 }
 
 void UpdatePosition(secs_world* world) {

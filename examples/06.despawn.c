@@ -47,5 +47,7 @@ int main()
     secs_entity_id enemy_entity4 = secs_spawn(&world);
     printf("Spawning Enemy with id [%zu]\n", enemy_entity4);
 
+    secs_free_world(&world);
+
     return 0;
 }

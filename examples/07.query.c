@@ -48,5 +48,7 @@ int main()
         printf("HP: (%f)\n", hp->value);
     }
 
+    secs_free_world(&world);
+
     return 0;
 }

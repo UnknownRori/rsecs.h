@@ -31,6 +31,7 @@ int main()
     insert_comp(&world, enemy_entity, POSITION_ID, &(Position) {.x = 200.f, .y = 100.f });
     insert_comp(&world, enemy_entity, HITPOINT_ID, &(Hitpoint) { .value = 20.f });
 
+    secs_free_world(&world);
 
     return 0;
 }

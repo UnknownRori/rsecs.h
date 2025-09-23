@@ -37,5 +37,7 @@ int main()
     printf("HP: (%f)\n", hp->value);
     printf("Is Player: %d\n", has_comp(&world, player_entity, PLAYER_ID));
 
+    secs_free_world(&world);
+
     return 0;
 }

@@ -77,6 +77,10 @@ int main(void)
             DrawText(text, SCREEN_WIDTH / 2.f - 200, SCREEN_HEIGHT / 2.f - font_size, font_size, WHITE);
         EndDrawing();
     }
+
+    secs_free_world(&sekai);
+
+    return 0;
 }
 
 void SpawnCircle(secs_world* sekai)

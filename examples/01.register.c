@@ -27,5 +27,7 @@ int main()
 
     (void)PLAYER_ID;
 
+    secs_free_world(&world);
+
     return 0;
 }

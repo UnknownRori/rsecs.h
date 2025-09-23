@@ -1,9 +1,10 @@
 /*
-rsecs.h - v0.1 UnknownRori <unknownrori@proton.me>
+rsecs.h - v0.2 UnknownRori <unknownrori@proton.me>
 
-Very unprofessional implementation of the ECS system for C, 
-I suggest you using <https://github.com/SanderMertens/flecs> instead for production ready stuff.
-This is just for fun learning project.
+Unprofressional implementation of ECS for C99 with stb style header file
+I suggest on using <https://github.com/SanderMertens/flecs> instead of this for production ready stuff.
+The current implementation is by using Sparse Set and Bitmask Archetype, and it can be somewhat cache friendly.
+But all of the operation should be O(1) [Creating, Deleting, Updating]
 
 Table of Contents : 
 - Quick Example
@@ -79,19 +80,24 @@ int main()
  - secs_query_iterator      - Ready to use iterator
 
 ### Function
+ - void secs_init_world(secs_world*); - Initialize [`secs_world`] struct
+ - void secs_free_world(secs_world*); - Free memory allocated inside [`secs_world`] struct
+
  - secs_entity_id secs_spawn(secs_world*); - Creating new entity
  - void secs_despawn(secs_world*, secs_entity_id); - Despawning entity
  - void secs_insert_comp(secs_world*, secs_entity_id, secs_component_mask, void*); - Attach a component into entity and overwrite if it exist
  - bool secs_has_comp(secs_world*, secs_entity_id, secs_component_mask); - Check if entity has component
+ - bool secs_has_not_comp(secs_world*, secs_entity_id, secs_component_mask); - Check if entity doesn't component
  - void secs_remove_comp(secs_world*, secs_entity_id, secs_component_mask); - Remove component from entity
+
  - void* secs_get_comp(secs_world*, secs_entity_id, secs_component_mask); - Get the component from entity, it will return NULL if it doesnt have any
  - secs_query_iterator secs_query_iter(secs_world*, secs_query); - Create a iterator from query
  - bool secs_query_iter_next(secs_query_iterator*); - Continue the iteration
  - void* secs_field(secs_query_iterator*, secs_component_mask); - Get the component from the iteration
 
 ### Macro
- - SECS_INIT_WORLD(WORLD)                   - Initialize `secs_world` struct.
- - SECS_REGISTER_COMPONENT(WORLD, TYPES)    - Register component into `secs_world` struct and also initialize `secs_world` memory chunk
+ - SECS_INIT_WORLD(WORLD)                   - Initialize [`secs_world`] struct.
+ - SECS_REGISTER_COMPONENT(WORLD, TYPES)    - Register component into [`secs_world`] struct and also initialize [`secs_world`] memory chunk
  - CREATE_QUERY(QUERY)                      - Generate query for iteration
 
 ## Flag
@@ -107,6 +113,7 @@ int main()
 
  - 0.0      - Initial Proof of concept
  - 0.1      - Implement the stb style implementation, change bunch of API
+ - 0.2      - Small Optimization, fix some buggy unnecesarily allocation, improve query API, Improve documentation
 
 */
 
@@ -118,6 +125,19 @@ int main()
 
 #include <stdbool.h>
 #include <stddef.h>
+
+#define RSECS_MAJOR_VERSION 0
+#define RSECS_MINOR_VERSION 2
+
+#ifndef RSECS_DEF
+    #define RSECS_DEF
+#endif // RSECS_DEF
+
+#ifndef RSECS_ASSERT
+    #include <assert.h>
+    #define RSECS_ASSERT assert
+#endif // RSECS_ASSERT
+
 
 /// --------------------------------
 /// INFO : RSECS Contract
@@ -131,54 +151,59 @@ typedef size_t secs_component_mask;
 typedef struct secs_world secs_world;
 
 typedef struct secs_query {
+    /// This will make sure that entity that has the mask be included
     secs_component_mask has;
+    /// This will make sure that entity has that mask to be excluded
     secs_component_mask exclude;
 } secs_query;
 
 typedef struct secs_query_iterator {
-    secs_query              query;
-    secs_world*             world;
-    size_t                  position;
+    secs_query      query;
+    secs_world*     world;
+    secs_entity_id  position;
 } secs_query_iterator;
 
 #define SECS_CREATE_QUERY(...) (secs_query) {__VA_ARGS__}
 #define secs_query_iter_current(IT) (IT)->position
 
+/// Initialize the [`secs_world`] by allocating necessarily memory to it
+RSECS_DEF void secs_init_world(secs_world* world);
+/// Register the component size and return a component mask that can be used on inserting, removing, and querying
+RSECS_DEF secs_component_mask secs_register_component(secs_world* world, size_t size_component);
+RSECS_DEF void secs_free_world(secs_world* world);
+
 /// Spawning an entity and doing some chore to setup the world to accomodate new entity
 /// It might be use old entity id
-secs_entity_id secs_spawn(secs_world* world);
+RSECS_DEF secs_entity_id secs_spawn(secs_world* world);
 /// Remove the entity id from active entity
-void secs_despawn(secs_world* world, secs_entity_id id);
+RSECS_DEF void secs_despawn(secs_world* world, secs_entity_id id);
 
 /// Insert a generic component into component pool by copying by value
 /// It will also overwrite if it already exist
-/// WARNING : When using this function avoid using `|` on component mask as it will cause undefined behavior
-void secs_insert_comp(secs_world* world, secs_entity_id id, secs_component_mask mask, void* component);
+/// WARNING : Avoid using `|` (Bit OR) when passing the mask IT WILL CAUSE UNDEFINED BEHAVIOR
+RSECS_DEF void secs_insert_comp(secs_world* world, secs_entity_id id, secs_component_mask mask, void* component);
 
 /// Check if entity has component mask
-bool secs_has_comp(secs_world* world, secs_entity_id id, secs_component_mask mask);
+RSECS_DEF bool secs_has_comp(secs_world* world, secs_entity_id id, secs_component_mask mask);
+/// Check if entity doesn't component mask
+RSECS_DEF bool secs_has_not_comp(secs_world* world, secs_entity_id id, secs_component_mask mask);
 
 /// Mark component on that entity id as garbage
-void secs_remove_comp(secs_world* world, secs_entity_id id, secs_component_mask mask);
+RSECS_DEF void secs_remove_comp(secs_world* world, secs_entity_id id, secs_component_mask mask);
 
 /// Get generic component from entity id, if it doesn't find it will fail at assertion
 /// You will also need to cast into appropriate type, and it will return NULL if it doesn't have
-/// WARNING : When using this function avoid fetching multiple component by doing `|` on 2 or more component mask id (please use 1 only)
-void* secs_get_comp(secs_world* world, secs_entity_id id, secs_component_mask mask);
+/// WARNING : Avoid using `|` (Bit OR) when passing the mask IT WILL CAUSE UNDEFINED BEHAVIOR
+RSECS_DEF void* secs_get_comp(secs_world* world, secs_entity_id id, secs_component_mask mask);
 
 
-/// Create a query iterator from the query, currently only save the world pointer into iterator struct
-secs_query_iterator secs_query_iter(secs_world* world, secs_query query);
+/// Create a query iterator from the query, and setup the iteration data based on the [`world`] and [`secs_query`] struct
+RSECS_DEF secs_query_iterator secs_query_iter(secs_world* world, secs_query query);
 /// Advance the iterator
-bool secs_query_iter_next(secs_query_iterator* it);
+RSECS_DEF bool secs_query_iter_next(secs_query_iterator* it);
 /// Get the component from corresponding iterator
-/// WARNING : When using this function avoid fetching multiple component by doing `|` on 2 or more component mask id (please use 1 only)
-void* secs_field(secs_query_iterator* it, secs_component_mask mask);
-
-#ifndef RSECS_ASSERT
-    #include <assert.h>
-    #define RSECS_ASSERT assert
-#endif
+/// WARNING : Avoid using `|` (Bit OR) when passing the mask IT WILL CAUSE UNDEFINED BEHAVIOR
+RSECS_DEF void* secs_field(secs_query_iterator* it, secs_component_mask mask);
 
 #ifdef RSECS_IMPLEMENTATION
 /// --------------------------------
@@ -368,10 +393,7 @@ typedef struct secs_comp_list {
 rstb_da_decl(secs_comp_list, secs_comp_list_chunk);
 
 struct secs_world {
-    // Current mask
     size_t component_mask;
-    // The next of entity id
-    // TODO : Make sure this id can be recycle
     size_t next_entity_id;
 
     secs_comp_list_chunk lists;
@@ -379,17 +401,11 @@ struct secs_world {
     secs_entity_chunk    dead;
 };
 
-#define SECS_INIT_WORLD(WORLD) (WORLD)->component_mask = 1; 
-#define SECS_REGISTER_COMPONENT(WORLD, TYPE) (WORLD)->component_mask; \
-    do { \
-        size_t index = __secs_get_comp_from_bitmask((WORLD)->component_mask); \
-        rstb_da_reserve(&(WORLD)->lists, index + 1); \
-        (WORLD)->lists.items[index].size_of_component = sizeof(TYPE); \
-        (WORLD)->component_mask = (WORLD)->component_mask << 1; \
-    } while (0)
+#define SECS_INIT_WORLD(WORLD) secs_init_world(WORLD) 
+#define SECS_REGISTER_COMPONENT(WORLD, TYPE) secs_register_component((WORLD), sizeof(TYPE))
 #define secs_query_iter_reset(IT) (IT)->position = -1
 
-size_t __secs_get_comp_from_bitmask(secs_component_mask mask)
+static size_t __secs_get_comp_from_bitmask(secs_component_mask mask)
 {
     int low = 0;
     int high = (sizeof(_secs_comp_map)/sizeof(_secs_comp_map[0])) - 1;
@@ -405,7 +421,35 @@ size_t __secs_get_comp_from_bitmask(secs_component_mask mask)
     }
 }
 
-secs_entity_id secs_spawn(secs_world* world)
+RSECS_DEF void secs_init_world(secs_world* world)
+{
+    memset(world, 0, sizeof(secs_world));
+    world->component_mask = 1;
+}
+
+RSECS_DEF secs_component_mask secs_register_component(secs_world* world, size_t size_component)
+{
+    secs_component_mask temp = world->component_mask;
+    size_t index = __secs_get_comp_from_bitmask(temp);
+    rstb_da_reserve(&(world)->lists, index + 1);
+    world->lists.items[index].size_of_component = size_component;
+    world->component_mask = world->component_mask << 1;
+    return temp;
+}
+
+RSECS_DEF void secs_free_world(secs_world* world)
+{
+    rstb_da_free(&world->mask);
+    rstb_da_free(&world->dead);
+    rstb_da_foreach(secs_comp_list, x, &world->lists) {
+        rstb_da_free(&x->dense);
+        rstb_da_free(&x->sparse);
+    }
+    rstb_da_free(&world->lists);
+}
+
+
+RSECS_DEF secs_entity_id secs_spawn(secs_world* world)
 {
     if (world->dead.count > 0) {
         secs_entity_id id = world->dead.items[0];
@@ -419,14 +463,14 @@ secs_entity_id secs_spawn(secs_world* world)
     return id;
 }
 
-void secs_despawn(secs_world* world, secs_entity_id id)
+RSECS_DEF void secs_despawn(secs_world* world, secs_entity_id id)
 {
     RSECS_ASSERT(world->mask.count > id && "Entity is not found");
     world->mask.items[id] = 0;
     rstb_da_append(&world->dead, id);
 }
 
-void secs_insert_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id, void* component)
+RSECS_DEF void secs_insert_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id, void* component)
 {
     size_t index = __secs_get_comp_from_bitmask(component_id);
     RSECS_ASSERT(index < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
@@ -443,7 +487,7 @@ void secs_insert_comp(secs_world* world, secs_entity_id entity_id, secs_componen
     world->mask.items[entity_id] |= component_id;
 }
 
-bool secs_has_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
+RSECS_DEF bool secs_has_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
     size_t index = __secs_get_comp_from_bitmask(component_id);
     RSECS_ASSERT(index < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
@@ -451,7 +495,7 @@ bool secs_has_comp(secs_world* world, secs_entity_id entity_id, secs_component_m
     return (world->mask.items[entity_id] & component_id) == component_id;
 }
 
-bool secs_has_not_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
+RSECS_DEF bool secs_has_not_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
     size_t index = __secs_get_comp_from_bitmask(component_id);
     RSECS_ASSERT(index < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
@@ -459,7 +503,9 @@ bool secs_has_not_comp(secs_world* world, secs_entity_id entity_id, secs_compone
     return (world->mask.items[entity_id] & component_id) == 0;
 }
 
-void secs_remove_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
+// NOTE : That removing a component is just marking it and not deleting entirely
+// In the next iteration it should be handled moving the data to be more packed
+RSECS_DEF void secs_remove_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
     size_t index = __secs_get_comp_from_bitmask(component_id);
     RSECS_ASSERT(index < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
@@ -467,7 +513,7 @@ void secs_remove_comp(secs_world* world, secs_entity_id entity_id, secs_componen
     world->mask.items[entity_id] &= ~component_id;
 }
 
-void* secs_get_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
+RSECS_DEF void* secs_get_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
     size_t index = __secs_get_comp_from_bitmask(component_id);
     RSECS_ASSERT(index < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
@@ -482,7 +528,7 @@ void* secs_get_comp(secs_world* world, secs_entity_id entity_id, secs_component_
 }
 
 
-secs_query_iterator secs_query_iter(secs_world* world, secs_query query)
+RSECS_DEF secs_query_iterator secs_query_iter(secs_world* world, secs_query query)
 {
      return (secs_query_iterator) {
         .query = query,
@@ -491,7 +537,7 @@ secs_query_iterator secs_query_iter(secs_world* world, secs_query query)
     };
 }
 
-bool secs_query_iter_next(secs_query_iterator* it)
+RSECS_DEF bool secs_query_iter_next(secs_query_iterator* it)
 {
     while (it->world->mask.count > it->position + 1) {
         it->position++;
@@ -501,7 +547,7 @@ bool secs_query_iter_next(secs_query_iterator* it)
     }
     return false;
 }
-void* secs_field(secs_query_iterator* it, secs_component_mask mask)
+RSECS_DEF void* secs_field(secs_query_iterator* it, secs_component_mask mask)
 {
     return secs_get_comp(it->world, it->position, mask);
 }
@@ -517,6 +563,7 @@ void* secs_field(secs_query_iterator* it, secs_component_mask mask)
     #define insert_comp(WORLD, ID, MASK, ...) secs_insert_comp((WORLD), (ID), (MASK), (__VA_ARGS__))
     #define remove_comp(WORLD, ID, MASK) secs_remove_comp((WORLD), (ID), (MASK))
     #define has_comp(WORLD, ID, MASK) secs_has_comp((WORLD), (ID), (MASK))
+    #define has_not_comp(WORLD, ID, MASK) secs_has_not_comp((WORLD), (ID), (MASK))
     #define get_comp(WORLD, ID, MASK) secs_get_comp((WORLD), (ID), (MASK))
 
     #define query_iter(WORLD, QUERY) secs_query_iter((WORLD), (QUERY))
