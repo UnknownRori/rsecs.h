@@ -1,5 +1,5 @@
 /*
-rsecs.h - v0.2 UnknownRori <unknownrori@proton.me>
+rsecs.h - v0.3 UnknownRori <unknownrori@proton.me>
 
 Unprofressional implementation of ECS for C99 with stb style header file
 I suggest on using <https://github.com/SanderMertens/flecs> instead of this for production ready stuff.
@@ -82,6 +82,7 @@ int main()
 ### Function
  - void secs_init_world(secs_world*); - Initialize [`secs_world`] struct
  - void secs_free_world(secs_world*); - Free memory allocated inside [`secs_world`] struct
+ - void secs_reset_world(secs_world* world) - Set all the count to 0 effectively mark everything as unused except the registered component
 
  - secs_entity_id secs_spawn(secs_world*); - Creating new entity
  - void secs_despawn(secs_world*, secs_entity_id); - Despawning entity
@@ -114,6 +115,7 @@ int main()
  - 0.0      - Initial Proof of concept
  - 0.1      - Implement the stb style implementation, change bunch of API
  - 0.2      - Small Optimization, fix some buggy unnecesarily allocation, improve query API, Improve documentation
+ - 0.3      - Added reset world function
 
 */
 
@@ -177,7 +179,10 @@ typedef struct secs_query_iterator {
 RSECS_DEF void secs_init_world(secs_world* world);
 /// Register the component size and return a component mask that can be used on inserting, removing, and querying
 RSECS_DEF secs_component_mask secs_register_component(secs_world* world, size_t size_component);
+/// De-allocate all allocated memory inside the [`secs_world`]
 RSECS_DEF void secs_free_world(secs_world* world);
+/// Mark everything as empty except registered component
+RSECS_DEF void secs_reset_world(secs_world* world);
 
 /// Spawning an entity and doing some chore to setup the world to accomodate new entity
 /// It might be use old entity id
@@ -451,6 +456,15 @@ RSECS_DEF void secs_free_world(secs_world* world)
     rstb_da_free(&world->lists);
 }
 
+RSECS_DEF void secs_reset_world(secs_world* world)
+{
+    world->mask.count = 0;
+    world->dead.count = 0;
+    rstb_da_foreach(secs_comp_list, x, &world->lists) {
+        x->dense.count = 0;
+        x->sparse.count = 0;
+    }
+}
 
 RSECS_DEF secs_entity_id secs_spawn(secs_world* world)
 {
