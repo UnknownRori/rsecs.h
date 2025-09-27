@@ -322,6 +322,8 @@ Dynamic Array (da) for C by using macro system.
 #include <string.h>
 #include <stddef.h>
 
+#define _SECS_GET_OFFSET(BASE, INDEX, SIZE) (BASE) + ((INDEX) * (SIZE))
+
 rstb_da_decl(char, secs_comp_chunk);
 rstb_da_decl(secs_entity_id, secs_entity_chunk);
 rstb_da_decl(secs_component_mask, secs_comp_mask_chunk);
@@ -398,8 +400,8 @@ typedef struct secs_comp_list {
     // The size of the component inside the dense array
     size_t size_of_component;
 
-    secs_comp_mask_chunk  dense;
-    secs_entity_chunk     sparse;
+    secs_comp_chunk     dense;
+    secs_entity_chunk   sparse;
 } secs_comp_list;
 
 rstb_da_decl(secs_comp_list, secs_comp_list_chunk);
@@ -488,21 +490,21 @@ RSECS_DEF void secs_despawn(secs_world* world, secs_entity_id id)
     world->mask.items[id] = 0;
     rstb_da_append(&world->dead, id);
 }
-
 RSECS_DEF void secs_insert_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id, void* component)
 {
     size_t index = __secs_get_comp_from_bitmask(component_id);
     RSECS_ASSERT(index < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     secs_comp_list* comp = &world->lists.items[index];
-    if (comp->sparse.count > entity_id) {
-        memcpy(comp->dense.items + ((comp->sparse.items[entity_id]) * comp->size_of_component), component,  comp->size_of_component);
+    if (secs_has_comp(world, entity_id, component_id)) {
+        
+        memcpy(_SECS_GET_OFFSET(comp->dense.items, comp->sparse.items[entity_id], comp->size_of_component), component,  comp->size_of_component);
         return;
     }
     rstb_da_reserve(&(comp->sparse), entity_id + 1);
     comp->sparse.items[entity_id] = comp->dense.count;
     comp->dense.count += 1;
     rstb_da_reserve(&(comp->dense), (comp->dense.count + 1) * comp->size_of_component);
-    memcpy(comp->dense.items + ((comp->sparse.items[entity_id]) * comp->size_of_component), component,  comp->size_of_component);
+    memcpy(_SECS_GET_OFFSET(comp->dense.items, comp->sparse.items[entity_id], comp->size_of_component), component,  comp->size_of_component);
     world->mask.items[entity_id] |= component_id;
 }
 
@@ -539,7 +541,7 @@ RSECS_DEF void* secs_get_comp(secs_world* world, secs_entity_id entity_id, secs_
     secs_comp_list* comp = &world->lists.items[index];
     if (comp->sparse.capacity > entity_id) {
         size_t index = comp->sparse.items[entity_id];
-        return (void*) (comp->dense.items + index * comp->size_of_component);
+        return _SECS_GET_OFFSET(comp->dense.items, index, comp->size_of_component);
     }
     return NULL;
 }
