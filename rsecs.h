@@ -1,10 +1,10 @@
 /*
-rsecs.h - v0.3 UnknownRori <unknownrori@proton.me>
+rsecs.h - v0.4 UnknownRori <unknownrori@proton.me>
 
 Unprofressional implementation of ECS for C99 with stb style header file
 I suggest on using <https://github.com/SanderMertens/flecs> instead of this for production ready stuff.
 The current implementation is by using Sparse Set and Bitmask Archetype, and it can be somewhat cache friendly.
-But all of the operation should be O(1) [Creating, Deleting, Updating]
+But all of the operation should be O(1) [Creating, Updating] for Deleting currently it will loop all of it to deallocate them
 
 Table of Contents : 
 - Quick Example
@@ -116,6 +116,7 @@ int main()
  - 0.1      - Implement the stb style implementation, change bunch of API
  - 0.2      - Small Optimization, fix some buggy unnecesarily allocation, improve query API, Improve documentation
  - 0.3      - Added reset world function
+ - 0.4      - Fix some data size calculation and implement remove in component pool properly
 
 */
 
@@ -322,7 +323,7 @@ Dynamic Array (da) for C by using macro system.
 #include <string.h>
 #include <stddef.h>
 
-#define _SECS_GET_OFFSET(BASE, INDEX, SIZE) (BASE) + ((INDEX) * (SIZE))
+#define _SECS_GET_OFFSET(BASE, INDEX, SIZE) ((char*)BASE) + ((INDEX) * (SIZE))
 
 rstb_da_decl(char, secs_comp_chunk);
 rstb_da_decl(secs_entity_id, secs_entity_chunk);
@@ -439,6 +440,8 @@ RSECS_DEF void secs_init_world(secs_world* world)
     world->component_mask = 1;
 }
 
+#include <stdio.h>
+
 RSECS_DEF secs_component_mask secs_register_component(secs_world* world, size_t size_component)
 {
     secs_component_mask temp = world->component_mask;
@@ -487,24 +490,37 @@ RSECS_DEF secs_entity_id secs_spawn(secs_world* world)
 RSECS_DEF void secs_despawn(secs_world* world, secs_entity_id id)
 {
     RSECS_ASSERT(world->mask.count > id && "Entity is not found");
+    for (size_t i = 0; i < 64; i++) {
+        if (secs_has_comp(world, id, _secs_comp_map[id])) {
+            secs_remove_comp(world, id, _secs_comp_map[id]);
+        }
+    }
     world->mask.items[id] = 0;
     rstb_da_append(&world->dead, id);
 }
+
 RSECS_DEF void secs_insert_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id, void* component)
 {
     size_t index = __secs_get_comp_from_bitmask(component_id);
     RSECS_ASSERT(index < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     secs_comp_list* comp = &world->lists.items[index];
     if (secs_has_comp(world, entity_id, component_id)) {
-        
-        memcpy(_SECS_GET_OFFSET(comp->dense.items, comp->sparse.items[entity_id], comp->size_of_component), component,  comp->size_of_component);
+        memcpy(
+            _SECS_GET_OFFSET(comp->dense.items, comp->sparse.items[entity_id], comp->size_of_component), 
+            component, 
+            comp->size_of_component
+        );
         return;
     }
     rstb_da_reserve(&(comp->sparse), entity_id + 1);
     comp->sparse.items[entity_id] = comp->dense.count;
     comp->dense.count += 1;
-    rstb_da_reserve(&(comp->dense), (comp->dense.count + 1) * comp->size_of_component);
-    memcpy(_SECS_GET_OFFSET(comp->dense.items, comp->sparse.items[entity_id], comp->size_of_component), component,  comp->size_of_component);
+    rstb_da_reserve(&(comp->dense), comp->dense.count * comp->size_of_component);
+    memcpy(
+        _SECS_GET_OFFSET(comp->dense.items, comp->sparse.items[entity_id], comp->size_of_component), 
+        component, 
+        comp->size_of_component
+    );
     world->mask.items[entity_id] |= component_id;
 }
 
@@ -516,20 +532,33 @@ RSECS_DEF bool secs_has_comp(secs_world* world, secs_entity_id entity_id, secs_c
 
 RSECS_DEF bool secs_has_not_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
-    size_t index = __secs_get_comp_from_bitmask(component_id);
-    RSECS_ASSERT(index < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     RSECS_ASSERT(world->mask.count > entity_id && "Entity is not found");
     return (world->mask.items[entity_id] & component_id) == 0;
 }
 
-// NOTE : That removing a component is just marking it and not deleting entirely
-// In the next iteration it should be handled moving the data to be more packed
 RSECS_DEF void secs_remove_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
     size_t index = __secs_get_comp_from_bitmask(component_id);
     RSECS_ASSERT(index < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     if (!secs_has_comp(world, entity_id, component_id)) return;
     world->mask.items[entity_id] &= ~component_id;
+
+    // TODO : Make this much more efficient
+    secs_comp_list* comp = &world->lists.items[index];
+    for (size_t i = 0; i < comp->sparse.capacity; i++) {
+        if (comp->sparse.items[i] == comp->dense.count - 1) {
+            memmove(
+                _SECS_GET_OFFSET(comp->dense.items, comp->sparse.items[entity_id], comp->size_of_component), 
+                _SECS_GET_OFFSET(comp->dense.items, comp->dense.count - 1, comp->size_of_component),
+                comp->size_of_component
+            );
+            comp->sparse.items[i] = comp->sparse.items[entity_id];
+            comp->sparse.items[entity_id] = 0;
+            comp->dense.count -= 1;
+            return;
+        }
+    }
+    RSECS_ASSERT(0 && "UNREACHABLE!");
 }
 
 RSECS_DEF void* secs_get_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
