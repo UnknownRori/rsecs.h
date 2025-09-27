@@ -108,7 +108,7 @@ int main()
 
 ## Built-in Dependencies
 
- - https://github.com/UnknownRori/rstb/blob/main/rstb_da.h
+ - https://raw.githubusercontent.com/UnknownRori/rstb/refs/heads/main/rstb_da.h
 
 ## Change Log
 
@@ -274,7 +274,7 @@ Dynamic Array (da) for C by using macro system.
 #define rstb_da_reserve(DA, EXPECTED) \
     do { \
         if ((EXPECTED) > (DA)->capacity) { \
-            int old = (DA)->capacity; \
+            size_t old = (DA)->capacity; \
             if ((DA)->capacity == 0) { \
                 (DA)->capacity = RSTB_DA_INIT_CAP; \
             } \
