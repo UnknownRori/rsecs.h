@@ -128,6 +128,7 @@ int main()
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define RSECS_MAJOR_VERSION 0
 #define RSECS_MINOR_VERSION 2
@@ -146,10 +147,10 @@ int main()
 /// INFO : RSECS Contract
 /// --------------------------------
 
-/// size_t provided at least 2^64 in 64-bit machine so roughly 18.446.744.073.709.551.616
-typedef size_t secs_entity_id;
+/// uint64_t provided at least 2^64 in 64-bit machine so roughly 18.446.744.073.709.551.616
+typedef uint64_t secs_entity_id;
 /// This component mask in allow up to 64 component in the 64-bit machine
-typedef size_t secs_component_mask;
+typedef uint64_t secs_component_mask;
 
 typedef struct secs_world secs_world;
 
@@ -581,7 +582,7 @@ RSECS_DEF secs_query_iterator secs_query_iter(secs_world* world, secs_query quer
      return (secs_query_iterator) {
         .query = query,
         .world = world,
-        .position = (size_t)-1,
+        .position = (uint64_t)-1,
     };
 }
 
