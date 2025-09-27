@@ -508,8 +508,6 @@ RSECS_DEF void secs_insert_comp(secs_world* world, secs_entity_id entity_id, sec
 
 RSECS_DEF bool secs_has_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
 {
-    size_t index = __secs_get_comp_from_bitmask(component_id);
-    RSECS_ASSERT(index < world->component_mask && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     RSECS_ASSERT(world->mask.count > entity_id && "Entity is not found");
     return (world->mask.items[entity_id] & component_id) == component_id;
 }
