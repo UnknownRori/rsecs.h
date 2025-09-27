@@ -427,6 +427,8 @@ static size_t __secs_get_comp_from_bitmask(secs_component_mask mask)
             high = mid - 1;
         }
     }
+    RSECS_ASSERT(0 && "UNREACHABLE");
+    return 0;
 }
 
 RSECS_DEF void secs_init_world(secs_world* world)
@@ -493,7 +495,7 @@ RSECS_DEF void secs_insert_comp(secs_world* world, secs_entity_id entity_id, sec
     RSECS_ASSERT(index < world->lists.capacity && "Yo, out of bound!, please register it by using `REGISTER_COMPONENT` and use it's id it generated");
     secs_comp_list* comp = &world->lists.items[index];
     if (comp->sparse.count > entity_id) {
-        memcpy(comp->dense.items + (comp->sparse.count - 1) * comp->size_of_component, component,  comp->size_of_component);
+        memcpy(comp->dense.items + ((comp->sparse.items[entity_id]) * comp->size_of_component), component,  comp->size_of_component);
         return;
     }
     rstb_da_reserve(&(comp->sparse), entity_id + 1);
