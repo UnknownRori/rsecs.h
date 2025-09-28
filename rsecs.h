@@ -441,8 +441,6 @@ RSECS_DEF void secs_init_world(secs_world* world)
     world->component_mask = 1;
 }
 
-#include <stdio.h>
-
 RSECS_DEF secs_component_mask secs_register_component(secs_world* world, size_t size_component)
 {
     secs_component_mask temp = world->component_mask;
