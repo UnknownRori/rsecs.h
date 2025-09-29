@@ -557,7 +557,6 @@ RSECS_DEF void secs_remove_comp(secs_world* world, secs_entity_id entity_id, sec
             return;
         }
     }
-    RSECS_ASSERT(0 && "UNREACHABLE!");
 }
 
 RSECS_DEF void* secs_get_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
