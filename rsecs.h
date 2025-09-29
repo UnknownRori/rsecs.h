@@ -490,8 +490,8 @@ RSECS_DEF void secs_despawn(secs_world* world, secs_entity_id id)
 {
     RSECS_ASSERT(world->mask.count > id && "Entity is not found");
     for (size_t i = 0; i < 64; i++) {
-        if (secs_has_comp(world, id, _secs_comp_map[id])) {
-            secs_remove_comp(world, id, _secs_comp_map[id]);
+        if (secs_has_comp(world, id, _secs_comp_map[i])) {
+            secs_remove_comp(world, id, _secs_comp_map[i]);
         }
     }
     world->mask.items[id] = 0;
@@ -557,8 +557,7 @@ RSECS_DEF void secs_remove_comp(secs_world* world, secs_entity_id entity_id, sec
             return;
         }
     }
-    // INFO : DISABLE FOR IDK
-    /*RSECS_ASSERT(0 && "UNREACHABLE!");*/
+    RSECS_ASSERT(0 && "UNREACHABLE!");
 }
 
 RSECS_DEF void* secs_get_comp(secs_world* world, secs_entity_id entity_id, secs_component_mask component_id)
